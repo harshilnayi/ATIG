@@ -31,23 +31,38 @@ class DetectionResult:
     payload: bytes
 
 class SignatureEngine:
-    def __init__(self):
+    def __init__(self, rules_dir: str = "rules"):
         self.rules: List[SignatureRule] = []
-        self._compile_patterns()
+        self.rules_dir = rules_dir
+        self._load_rules_from_file()
 
-    def _compile_patterns(self):
-        rule_text = """
-alert tcp any any -> any 80 (msg:"ET WEB_SERVER SQL Injection Attempt"; content:"UNION"; nocase; content:"SELECT"; nocase; sid:1000001; rev:1;)
-alert tcp any any -> any 22 (msg:"ET SCAN SSH Brute Force Attempt"; content:"SSH"; sid:1000002; rev:1;)
-alert udp any any -> any 53 (msg:"ET DNS Suspicious Query Length"; depth:100; sid:1000003; rev:1;)
-alert tcp any any -> any 443 (msg:"MALWARE可疑 TLS Handshake"; sid:1000004; rev:1;)
-alert tcp any any -> any any (msg:"ET POLICY Outgoing Basic Authentication"; content:"Authorization:"; content:"Basic"; sid:1000005; rev:1;)
-"""
-        for line in rule_text.strip().split('\n'):
-            rule = self._parse_rule(line)
-            if rule:
-                self.rules.append(rule)
-                logger.info(f"loaded rule: {rule.message}")
+    def _load_rules_from_file(self):
+        import os
+        rules_file = os.path.join(self.rules_dir, "emerging_threats.rules")
+        if not os.path.exists(rules_file):
+            logger.warning(f"rules file not found at {rules_file}, using defaults")
+            self._compile_default_patterns()
+            return
+
+        try:
+            with open(rules_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        rule = self._parse_rule(line)
+                        if rule:
+                            self.rules.append(rule)
+                            logger.info(f"loaded rule from file: {rule.rule_id} - {rule.message}")
+            logger.info(f"loaded {len(self.rules)} rules from {rules_file}")
+        except Exception as e:
+            logger.error(f"failed to load rules file: {e}")
+            self._compile_default_patterns()
+
+    def _compile_default_patterns(self):
+        self.rules = [
+            SignatureRule("1000001", "SQL Injection UNION SELECT", "tcp", None, None, None, "80", "UNION", re.compile(r"UNION", re.I), "high", "web"),
+            SignatureRule("1000002", "SSH Brute Force", "tcp", None, None, None, "22", "SSH", re.compile(r"SSH", re.I), "medium", "scan"),
+        ]
 
     def _parse_rule(self, rule_text: str) -> Optional[SignatureRule]:
         try:
