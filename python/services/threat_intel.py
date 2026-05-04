@@ -60,14 +60,18 @@ class AbuseCHIntelligence:
     async def get_malware_urls(self) -> List[Dict]:
         try:
             async with aiohttp.ClientSession() as session:
-                params = {"action": "get_url", "limit": 1000}
-                async with session.get(self.base_url, params=params, timeout=60) as resp:
+                async with session.get("https://urlhaus.abuse.ch/downloads/csv_recent/", timeout=60) as resp:
                     if resp.status == 200:
-                        data = await resp.json()
-                        return data.get('urls', [])
+                        text = await resp.text()
+                        urls = []
+                        for line in text.split('\n')[1:100]:
+                            if ',' in line:
+                                parts = line.split(',')
+                                if len(parts) > 6:
+                                    urls.append({'url': parts[6], 'threat': parts[3]})
+                        return urls
         except Exception as e:
             logger.error(f"Abuse.ch URLhaus error: {e}")
-
         return []
 
     async def get_ip_blocklist(self) -> List[str]:

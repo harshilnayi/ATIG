@@ -24,43 +24,91 @@
       </div>
     </div>
 
-    <div class="bg-slate-800 rounded-lg p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold text-white">Live Alerts</h2>
-        <span class="text-sm text-slate-400">
-          <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-          {{ connectionStatus }}
-        </span>
-      </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div class="lg:col-span-2 bg-slate-800 rounded-lg p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold text-white">Live Alerts</h2>
+          <span class="text-sm text-slate-400">
+            <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+            {{ connectionStatus }}
+          </span>
+        </div>
 
-      <div class="space-y-2 max-h-96 overflow-y-auto" v-if="alerts.length > 0">
-        <div
-          v-for="alert in alerts"
-          :key="alert.timestamp + Math.random()"
-          class="p-4 rounded alert-{{ alert.severity }}"
-        >
-          <div class="flex justify-between items-start">
-            <div>
-              <div class="font-medium text-white">{{ alert.message || alert.type }}</div>
-              <div class="text-sm text-slate-400 mt-1">
-                {{ alert.src_ip }} → {{ alert.dst_ip }}
+        <div class="space-y-2 max-h-96 overflow-y-auto" v-if="alerts.length > 0">
+          <div
+            v-for="(alert, idx) in alerts"
+            :key="idx"
+            class="p-4 rounded"
+            :class="alertClass(alert.severity || alert.type)"
+          >
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-medium text-white">{{ alert.message || alert.type }}</div>
+                <div class="text-sm text-slate-400 mt-1">
+                  {{ alert.src_ip || 'N/A' }} → {{ alert.dst_ip || 'N/A' }}
+                </div>
+                <div class="text-xs text-slate-500 mt-1">
+                  {{ formatTime(alert.timestamp) }} • {{ alert.type }}
+                </div>
               </div>
-              <div class="text-xs text-slate-500 mt-1">
-                {{ formatTime(alert.timestamp) }}
-              </div>
+              <span
+                class="px-2 py-1 rounded text-xs font-medium"
+                :class="severityClass(alert.severity)"
+              >
+                {{ alert.severity?.toUpperCase() || alert.type }}
+              </span>
             </div>
-            <span
-              class="px-2 py-1 rounded text-xs font-medium"
-              :class="severityClass(alert.severity)"
-            >
-              {{ alert.severity?.toUpperCase() || alert.type }}
-            </span>
           </div>
+        </div>
+
+        <div v-else class="text-center py-12 text-slate-500">
+          <svg class="w-12 h-12 mx-auto mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+          No alerts yet. Traffic is being monitored...
         </div>
       </div>
 
-      <div v-else class="text-center py-12 text-slate-500">
-        No alerts yet. Traffic is being monitored...
+      <div class="space-y-6">
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Alert Distribution</h3>
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <div class="w-20 text-sm text-slate-400">Signature</div>
+              <div class="flex-1 bg-slate-700 rounded-full h-5 overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-blue-500 transition-all duration-500"
+                  :style="{ width: ((stats.signature_detections || 0) / (stats.total_alerts || 1)) * 100 + '%' }"
+                ></div>
+              </div>
+              <div class="ml-2 text-sm font-medium text-white">{{ stats.signature_detections || 0 }}</div>
+            </div>
+            <div class="flex items-center">
+              <div class="w-20 text-sm text-slate-400">Anomaly</div>
+              <div class="flex-1 bg-slate-700 rounded-full h-5 overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-purple-500 transition-all duration-500"
+                  :style="{ width: ((stats.anomaly_detections || 0) / (stats.total_alerts || 1)) * 100 + '%' }"
+                ></div>
+              </div>
+              <div class="ml-2 text-sm font-medium text-white">{{ stats.anomaly_detections || 0 }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Threat Intel</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Active Indicators</span>
+              <span class="text-lg font-bold text-red-400">{{ stats.threat_intel_indicators || 0 }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Feeds Connected</span>
+              <span class="text-lg font-bold text-green-400">3</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
