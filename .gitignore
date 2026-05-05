@@ -22,6 +22,10 @@ env/
 dist/
 build/
 
+# Node
+node_modules/
+package-lock.json
+
 # IDE
 .idea/
 .vscode/
@@ -31,6 +35,7 @@ build/
 
 # Logs
 *.log
+server.*.log
 
 # Database
 *.db
@@ -42,6 +47,14 @@ build/
 *.pem
 *.key
 
+# Local Config
+pg_hba.conf
+
 # OS
 Thumbs.db
 Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+atig.db

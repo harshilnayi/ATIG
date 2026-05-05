@@ -39,7 +39,7 @@
             v-for="(alert, idx) in alerts"
             :key="idx"
             class="p-4 rounded"
-            :class="alertClass(alert.severity || alert.type)"
+            :class="severityClass(alert.severity || alert.type)"
           >
             <div class="flex justify-between items-start">
               <div>
@@ -53,7 +53,7 @@
               </div>
               <span
                 class="px-2 py-1 rounded text-xs font-medium"
-                :class="severityClass(alert.severity)"
+                :class="severityBadge(alert.severity)"
               >
                 {{ alert.severity?.toUpperCase() || alert.type }}
               </span>
@@ -125,6 +125,16 @@ let ws = null
 
 const severityClass = (severity) => {
   const classes = {
+    'critical': 'bg-red-900/50 border-l-4 border-red-500',
+    'high': 'bg-orange-900/50 border-l-4 border-orange-500',
+    'medium': 'bg-yellow-900/50 border-l-4 border-yellow-500',
+    'low': 'bg-blue-900/50 border-l-4 border-blue-500'
+  }
+  return classes[severity] || 'bg-slate-700/50 border-l-4 border-slate-500'
+}
+
+const severityBadge = (severity) => {
+  const classes = {
     'critical': 'bg-red-900 text-red-200',
     'high': 'bg-orange-900 text-orange-200',
     'medium': 'bg-yellow-900 text-yellow-200',
@@ -138,7 +148,7 @@ const formatTime = (timestamp) => {
 }
 
 const connectWebSocket = () => {
-  ws = new WebSocket('ws://localhost:8000/ws/alerts')
+  ws = new WebSocket('ws://localhost:8001/ws/alerts')
 
   ws.onopen = () => {
     connectionStatus.value = 'Connected'
@@ -164,7 +174,7 @@ const connectWebSocket = () => {
 
 const fetchStats = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/stats')
+    const response = await axios.get('/stats')
     stats.value = response.data
   } catch (error) {
     console.error('Failed to fetch stats:', error)
@@ -173,7 +183,7 @@ const fetchStats = async () => {
 
 const fetchAlerts = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/alerts?limit=20')
+    const response = await axios.get('/alerts?limit=20')
     alerts.value = response.data
   } catch (error) {
     console.error('Failed to fetch alerts:', error)

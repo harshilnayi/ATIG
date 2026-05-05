@@ -3,17 +3,18 @@ services:
     image: postgres:15-alpine
     container_name: atig-postgres
     environment:
-      POSTGRES_USER: atig
-      POSTGRES_PASSWORD: atig_dev_pass_2026
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: atig_db
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./pg_hba.conf:/pg_hba.conf
+    command: ["postgres", "-c", "config_file=/pg_hba.conf"]
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U atig"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
