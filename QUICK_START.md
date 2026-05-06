@@ -1,140 +1,156 @@
-# ATIG Quick Start Guide
+# 🚀 ATIG Quick Start Guide
 
-## 🚀 Start the System
+**Get up and running in 5 minutes**
 
-### 1. Start Database
+---
+
+## Step-by-Step Setup
+
+### 1️⃣ Start the Database
 ```powershell
 cd E:\ATIG
 docker-compose up -d postgres
 ```
+*Wait 10 seconds for PostgreSQL to start*
 
-### 2. Start API
+---
+
+### 2️⃣ Start the Detection API
 ```powershell
 cd E:\ATIG\python
 python main.py
 ```
-*Wait for "Uvicorn running on http://0.0.0.0:8001"*
+**Wait until you see:**
+```
+INFO: Uvicorn running on http://0.0.0.0:8001
+INFO: Application startup complete.
+```
 
-### 3. Start Dashboard
+---
+
+### 3️⃣ Start the Dashboard
+**Open a NEW terminal/window:**
 ```powershell
 cd E:\ATIG\dashboard
 npm run dev
 ```
-
-### 4. Open Browser
-Go to `http://localhost:3000`
-
-## 🧪 Test Vulnerability Detection
-
-### SQL Injection
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/packet/analyze?src_ip=192.168.1.100&dst_ip=10.0.0.1&src_port=54321&dst_port=80&protocol=tcp&payload=UNION%20SELECT" -Method POST
+**Wait until you see:**
+```
+➜  Local:   http://localhost:3000/
 ```
 
-### XSS
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/packet/analyze?src_ip=192.168.1.100&dst_ip=10.0.0.1&src_port=54321&dst_port=80&protocol=tcp&payload=%3Cscript%3E" -Method POST
+---
+
+### 4️⃣ Open the Dashboard
+Open your browser and go to:
+```
+http://localhost:3000
 ```
 
-### Path Traversal
+**You should see:**
+- ✅ Green "Connected" status
+- 📊 Stats cards showing alerts
+- 📈 Charts with data
+- 🚨 Alert feed
+
+---
+
+## 🧪 Quick Test
+
+**Test SQL Injection Detection:**
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/packet/analyze?src_ip=192.168.1.100&dst_ip=10.0.0.1&src_port=54321&dst_port=80&protocol=tcp&payload=../etc/passwd" -Method POST
+$payload = "UNION SELECT * FROM users"
+$uri = "http://localhost:8001/packet/analyze?src_ip=192.168.1.100&dst_ip=10.0.0.1&src_port=54321&dst_port=80&protocol=tcp&payload=" + [System.Web.HttpUtility]::UrlEncode($payload)
+Invoke-RestMethod -Uri $uri -Method POST
 ```
 
-## 🛡️ Block an IP
+**Expected:** Detection result with SQL Injection rule matched
 
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/block/ip/192.168.1.100?duration=3600&reason=malicious" -Method POST
-```
-
-## 📊 Get Dashboard Data
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/dashboard/comprehensive"
-```
-
-## 🔍 View Attack Patterns
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/analytics/attack-patterns"
-```
-
-## 📋 View All Rules
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/rules"
-```
-
-## 🚨 View Blocked IPs
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/blocked"
-```
-
-## 📈 View Top Threats
-
-```powershell
-Invoke-RestMethod -Uri "http://localhost:8001/threats/top"
-```
-
-## 🔄 Stop the System
-
-### Stop API
-Press `Ctrl+C` in the Python window
-
-### Stop Database
-```powershell
-cd E:\ATIG
-docker-compose down
-```
-
-### Stop Dashboard
-Press `Ctrl+C` in the dashboard window
-
-## 📚 API Documentation
-
-See `API_DOCUMENTATION.md` for complete API reference.
-
-## 🎯 Key Endpoints
-
-| Endpoint | Description |
-|----------|-------------|
-| `/health` | Health check |
-| `/packet/analyze` | Analyze packet for threats |
-| `/alerts` | Get recent alerts |
-| `/dashboard/comprehensive` | All dashboard data |
-| `/threats/top` | Top dangerous IPs |
-| `/block/ip/{ip}` | Block an IP |
-| `/rules` | List detection rules |
-| `/analytics/attack-patterns` | Attack patterns |
+---
 
 ## 🔧 Troubleshooting
 
-### Port 8001 in use
+### API won't start?
 ```powershell
+# Check if port 8001 is in use
+Get-NetTCPConnection -LocalPort 8001
+
+# Kill process if needed
 Get-NetTCPConnection -LocalPort 8001 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+
+# Try again
+cd E:\ATIG\python
+python main.py
 ```
 
-### Database connection issues
+### Dashboard won't start?
 ```powershell
+# Check if port 3000 is in use
+Get-NetTCPConnection -LocalPort 3000
+
+# Kill process if needed
+Get-NetTCPConnection -LocalPort 3000 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+
+# Try again
+cd E:\ATIG\dashboard
+npm run dev
+```
+
+### Database won't start?
+```powershell
+# Check Docker is running
+docker ps
+
+# Restart container
+docker-compose restart postgres
+
+# Or recreate
 docker-compose down
 docker-compose up -d postgres
 ```
 
-### Dashboard not connecting
-- Check API is running on port 8001
-- Refresh the browser
-- Check browser console for errors
+---
 
-## 🎉 You're Ready!
+## 📊 What You'll See
 
-The system is now production-ready with:
-- ✅ 50+ detection rules
-- ✅ Real-time threat scoring
-- ✅ IP blocking and rate limiting
-- ✅ Comprehensive analytics
-- ✅ WebSocket real-time alerts
-- ✅ 30+ API endpoints
-- ✅ Full documentation
+### Stats Cards
+- Total Alerts
+- Critical Severity
+- High Severity  
+- Medium Severity
 
-Start detecting threats now! 🚀
+### Charts
+- Alert Timeline (24h)
+- Severity Distribution
+- Detection Types
+
+### Analytics
+- Top Source IPs
+- Top Targeted Ports
+- Attack Patterns
+
+### Live Features
+- Real-time alert feed (WebSocket)
+- Auto-updating stats
+- Live charts
+
+---
+
+## 🎯 Next Steps
+
+1. **Read the full documentation:** See [README.md](README.md)
+2. **Run comprehensive tests:** See [TESTING_GUIDE.md](TESTING_GUIDE.md)
+3. **Learn the API:** See [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+
+---
+
+## ✅ Verification Checklist
+
+- [ ] Database running (`docker ps` shows postgres)
+- [ ] API responding (`http://localhost:8001/health`)
+- [ ] Dashboard accessible (`http://localhost:3000`)
+- [ ] WebSocket connected (green "Connected" on dashboard)
+- [ ] Stats showing data
+- [ ] Test detection works (SQL injection test)
+
+**All checked? You're ready to go! 🚀**

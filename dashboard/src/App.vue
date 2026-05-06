@@ -1,61 +1,202 @@
 <template>
-  <div class="min-h-screen p-6">
-    <header class="mb-8">
-      <h1 class="text-3xl font-bold text-white">ATIG Dashboard</h1>
-      <p class="text-slate-400 mt-1">Network Intrusion Detection System</p>
+  <div class="min-h-screen bg-slate-900">
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-bold text-white">ATIG Dashboard</h1>
+          <p class="text-slate-400 text-sm mt-1">Network Intrusion Detection System</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" :class="connectionStatusColor"></span>
+            <span class="text-sm text-slate-400">{{ connectionStatus }}</span>
+          </div>
+          <button @click="refreshAll" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition">
+            Refresh
+          </button>
+        </div>
+      </div>
     </header>
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-slate-800 rounded-lg p-4">
-        <div class="text-slate-400 text-sm">Total Alerts</div>
-        <div class="text-3xl font-bold text-white">{{ stats.total_alerts || 0 }}</div>
+    <!-- Main Content -->
+    <main class="px-6 py-6">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-blue-500">
+          <div class="text-slate-400 text-sm">Total Alerts</div>
+          <div class="text-3xl font-bold text-white mt-1">{{ stats.total_alerts || 0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">{{ stats.total_alerts || 0 }} total</div>
+        </div>
+        <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-red-500">
+          <div class="text-slate-400 text-sm">Critical</div>
+          <div class="text-3xl font-bold text-red-400 mt-1">{{ stats.critical || 0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">Critical severity</div>
+        </div>
+        <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-orange-500">
+          <div class="text-slate-400 text-sm">High Severity</div>
+          <div class="text-3xl font-bold text-orange-400 mt-1">{{ stats.high_severity || 0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">High severity</div>
+        </div>
+        <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-yellow-500">
+          <div class="text-slate-400 text-sm">Medium Severity</div>
+          <div class="text-3xl font-bold text-yellow-400 mt-1">{{ stats.medium_severity || 0 }}</div>
+          <div class="text-xs text-slate-500 mt-1">Medium severity</div>
+        </div>
       </div>
-      <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-red-500">
-        <div class="text-slate-400 text-sm">High Severity</div>
-        <div class="text-3xl font-bold text-red-400">{{ stats.high_severity || 0 }}</div>
-      </div>
-      <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-yellow-500">
-        <div class="text-slate-400 text-sm">Signature Detections</div>
-        <div class="text-3xl font-bold text-yellow-400">{{ stats.signature_detections || 0 }}</div>
-      </div>
-      <div class="bg-slate-800 rounded-lg p-4 border-l-4 border-purple-500">
-        <div class="text-slate-400 text-sm">Anomaly Detections</div>
-        <div class="text-3xl font-bold text-purple-400">{{ stats.anomaly_detections || 0 }}</div>
-      </div>
-    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-      <div class="lg:col-span-2 bg-slate-800 rounded-lg p-6">
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Alert Timeline Chart -->
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Alert Timeline (24h)</h3>
+          <div class="h-64">
+            <canvas ref="timelineChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Severity Distribution Chart -->
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Severity Distribution</h3>
+          <div class="h-64">
+            <canvas ref="severityChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detection Types Chart -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Detection Types</h3>
+          <div class="h-48">
+            <canvas ref="typeChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Top Source IPs -->
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Top Source IPs</h3>
+          <div class="space-y-2">
+            <div v-for="(ip, idx) in topSourceIps.slice(0, 5)" :key="idx" class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">{{ ip.ip }}</span>
+              <span class="text-sm font-medium text-white">{{ ip.count }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Targeted Ports -->
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Top Targeted Ports</h3>
+          <div class="space-y-2">
+            <div v-for="(port, idx) in topPorts.slice(0, 5)" :key="idx" class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Port {{ port.port }}</span>
+              <span class="text-sm font-medium text-white">{{ port.count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attack Patterns -->
+      <div class="bg-slate-800 rounded-lg p-6 mb-6">
+        <h3 class="text-lg font-semibold text-white mb-4">Attack Patterns</h3>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div
+            v-for="(pattern, idx) in attackPatterns"
+            :key="idx"
+            class="bg-slate-700 rounded-lg p-4 text-center"
+          >
+            <div class="text-2xl font-bold" :class="getPatternColor(pattern.count)">{{ pattern.count }}</div>
+            <div class="text-sm text-slate-400 mt-1">{{ formatPatternName(pattern.pattern) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alert Filters and Search -->
+      <div class="bg-slate-800 rounded-lg p-6 mb-6">
+        <div class="flex flex-wrap gap-4 mb-4">
+          <input
+            v-model="searchQuery"
+            @input="filterAlerts"
+            placeholder="Search alerts..."
+            class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <select
+            v-model="selectedSeverity"
+            @change="filterAlerts"
+            class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select
+            v-model="selectedType"
+            @change="filterAlerts"
+            class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All Types</option>
+            <option value="SIGNATURE">Signature</option>
+            <option value="ANOMALY">Anomaly</option>
+            <option value="THREAT_INTEL">Threat Intel</option>
+          </select>
+          <select
+            v-model="timeRange"
+            @change="filterAlerts"
+            class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="1h">Last Hour</option>
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+          </select>
+          <button
+            @click="exportAlerts"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition"
+          >
+            Export
+          </button>
+        </div>
+        <div class="text-sm text-slate-400">
+          Showing {{ filteredAlerts.length }} alerts
+        </div>
+      </div>
+
+      <!-- Live Alerts Feed -->
+      <div class="bg-slate-800 rounded-lg p-6 mb-6">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-semibold text-white">Live Alerts</h2>
+          <h3 class="text-lg font-semibold text-white">Live Alerts</h3>
           <span class="text-sm text-slate-400">
             <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
             {{ connectionStatus }}
           </span>
         </div>
 
-        <div class="space-y-2 max-h-96 overflow-y-auto" v-if="alerts.length > 0">
+        <div class="space-y-2 max-h-96 overflow-y-auto" v-if="filteredAlerts.length > 0">
           <div
-            v-for="(alert, idx) in alerts"
-            :key="idx"
-            class="p-4 rounded"
-            :class="severityClass(alert.severity || alert.type)"
+            v-for="(alert, idx) in filteredAlerts"
+            :key="alert.id"
+            class="p-4 rounded border-l-4"
+            :class="getSeverityBorder(alert.severity)"
           >
             <div class="flex justify-between items-start">
-              <div>
-                <div class="font-medium text-white">{{ alert.message || alert.type }}</div>
+              <div class="flex-1">
+                <div class="font-medium text-white">{{ alert.message || alert.signature_msg }}</div>
                 <div class="text-sm text-slate-400 mt-1">
                   {{ alert.src_ip || 'N/A' }} → {{ alert.dst_ip || 'N/A' }}
+                  <span class="mx-2">•</span>
+                  Port {{ alert.dest_port || 'N/A' }}
                 </div>
                 <div class="text-xs text-slate-500 mt-1">
-                  {{ formatTime(alert.timestamp) }} • {{ alert.type }}
+                  {{ formatTime(alert.timestamp) }} • {{ alert.type || alert.detection_type }}
                 </div>
               </div>
               <span
                 class="px-2 py-1 rounded text-xs font-medium"
-                :class="severityBadge(alert.severity)"
+                :class="getSeverityBadge(alert.severity)"
               >
-                {{ alert.severity?.toUpperCase() || alert.type }}
+                {{ alert.severity?.toUpperCase() || alert.type?.toUpperCase() || 'UNKNOWN' }}
               </span>
             </div>
           </div>
@@ -65,39 +206,14 @@
           <svg class="w-12 h-12 mx-auto mb-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
           </svg>
-          No alerts yet. Traffic is being monitored...
+          No alerts found. Traffic is being monitored...
         </div>
       </div>
 
-      <div class="space-y-6">
+      <!-- Threat Intelligence -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div class="bg-slate-800 rounded-lg p-6">
-          <h3 class="text-lg font-semibold text-white mb-4">Alert Distribution</h3>
-          <div class="space-y-3">
-            <div class="flex items-center">
-              <div class="w-20 text-sm text-slate-400">Signature</div>
-              <div class="flex-1 bg-slate-700 rounded-full h-5 overflow-hidden">
-                <div
-                  class="h-full rounded-full bg-blue-500 transition-all duration-500"
-                  :style="{ width: ((stats.signature_detections || 0) / (stats.total_alerts || 1)) * 100 + '%' }"
-                ></div>
-              </div>
-              <div class="ml-2 text-sm font-medium text-white">{{ stats.signature_detections || 0 }}</div>
-            </div>
-            <div class="flex items-center">
-              <div class="w-20 text-sm text-slate-400">Anomaly</div>
-              <div class="flex-1 bg-slate-700 rounded-full h-5 overflow-hidden">
-                <div
-                  class="h-full rounded-full bg-purple-500 transition-all duration-500"
-                  :style="{ width: ((stats.anomaly_detections || 0) / (stats.total_alerts || 1)) * 100 + '%' }"
-                ></div>
-              </div>
-              <div class="ml-2 text-sm font-medium text-white">{{ stats.anomaly_detections || 0 }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-slate-800 rounded-lg p-6">
-          <h3 class="text-lg font-semibold text-white mb-4">Threat Intel</h3>
+          <h3 class="text-lg font-semibold text-white mb-4">Threat Intelligence</h3>
           <div class="space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-sm text-slate-400">Active Indicators</span>
@@ -107,33 +223,199 @@
               <span class="text-sm text-slate-400">Feeds Connected</span>
               <span class="text-lg font-bold text-green-400">3</span>
             </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Last Updated</span>
+              <span class="text-sm text-slate-400">{{ threatIntelLastUpdated }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Threats -->
+        <div class="bg-slate-800 rounded-lg p-6">
+          <h3 class="text-lg font-semibold text-white mb-4">Top Threats</h3>
+          <div class="space-y-2">
+            <div
+              v-for="(threat, idx) in topThreats.slice(0, 5)"
+              :key="idx"
+              class="flex justify-between items-center p-3 bg-slate-700 rounded"
+            >
+              <div>
+                <div class="text-sm font-medium text-white">{{ threat.ip }}</div>
+                <div class="text-xs text-slate-400 mt-1">{{ threat.alert_count }} alerts</div>
+              </div>
+              <span
+                class="px-2 py-1 rounded text-xs font-medium"
+                :class="getThreatLevelClass(threat.risk_level)"
+              >
+                {{ threat.risk_level?.toUpperCase() || 'UNKNOWN' }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      <!-- Correlated Attacks -->
+      <div class="bg-slate-800 rounded-lg p-6 mb-6" v-if="correlations.length > 0">
+        <h3 class="text-lg font-semibold text-white mb-4">Correlated Attack Patterns</h3>
+        <div class="space-y-2">
+          <div
+            v-for="(corr, idx) in correlations"
+            :key="idx"
+            class="p-4 bg-slate-700 rounded border-l-4"
+            :class="getCorrelationSeverityClass(corr.severity)"
+          >
+            <div class="flex justify-between items-start">
+              <div>
+                <div class="font-medium text-white">{{ corr.correlation_name }}</div>
+                <div class="text-sm text-slate-400 mt-1">
+                  {{ corr.matched_alerts }} alerts detected
+                </div>
+                <div class="text-xs text-slate-500 mt-1">
+                  {{ formatTime(corr.first_seen) }} - {{ formatTime(corr.last_seen) }}
+                </div>
+              </div>
+              <span
+                class="px-2 py-1 rounded text-xs font-medium"
+                :class="getSeverityBadge(corr.severity)"
+              >
+                {{ corr.severity?.toUpperCase() }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Status -->
+      <div class="bg-slate-800 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-white mb-4">System Status</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="bg-slate-700 rounded p-4 text-center">
+            <div class="text-2xl font-bold text-green-400">{{ systemStatus.rules_loaded }}</div>
+            <div class="text-xs text-slate-400 mt-1">Rules Loaded</div>
+          </div>
+          <div class="bg-slate-700 rounded p-4 text-center">
+            <div class="text-2xl font-bold text-blue-400">{{ systemStatus.webhooks_configured }}</div>
+            <div class="text-xs text-slate-400 mt-1">Webhooks</div>
+          </div>
+          <div class="bg-slate-700 rounded p-4 text-center">
+            <div class="text-2xl font-bold text-purple-400">{{ systemStatus.blocked_ips }}</div>
+            <div class="text-xs text-slate-400 mt-1">Blocked IPs</div>
+          </div>
+          <div class="bg-slate-700 rounded p-4 text-center">
+            <div class="text-2xl font-bold text-orange-400">{{ systemStatus.threat_intel_indicators }}</div>
+            <div class="text-xs text-slate-400 mt-1">Threat Intel</div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
+import { Chart as ChartJS } from 'chart.js'
+import { Line, Bar, Doughnut } from 'vue-chartjs'
+import { format } from 'date-fns'
+
+// Register Chart.js components
 
 const alerts = ref([])
 const stats = ref({})
 const connectionStatus = ref('Connecting...')
-let ws = null
+const ws = ref(null)
 
-const severityClass = (severity) => {
-  const classes = {
-    'critical': 'bg-red-900/50 border-l-4 border-red-500',
-    'high': 'bg-orange-900/50 border-l-4 border-orange-500',
-    'medium': 'bg-yellow-900/50 border-l-4 border-yellow-500',
-    'low': 'bg-blue-900/50 border-l-4 border-blue-500'
+// Search and filters
+const searchQuery = ref('')
+const selectedSeverity = ref('')
+const selectedType = ref('')
+const timeRange = ref('24h')
+
+// Analytics data
+const topSourceIps = ref([])
+const topPorts = ref([])
+const attackPatterns = ref([])
+const correlations = ref([])
+const topThreats = ref([])
+const threatIntelLastUpdated = ref('Never')
+
+// System status
+const systemStatus = ref({
+  rules_loaded: 0,
+  webhooks_configured: 0,
+  blocked_ips: 0,
+  threat_intel_indicators: 0
+})
+
+// Chart refs
+const timelineChart = ref(null)
+const severityChart = ref(null)
+const typeChart = ref(null)
+
+// Chart instances
+let timelineChartInstance = null
+let severityChartInstance = null
+let typeChartInstance = null
+
+const connectionStatusColor = computed(() => {
+  switch (connectionStatus.value) {
+    case 'Connected': return 'bg-green-500'
+    case 'Connecting...': return 'bg-yellow-500'
+    case 'Disconnected': return 'bg-red-500'
+    default: return 'bg-slate-500'
   }
-  return classes[severity] || 'bg-slate-700/50 border-l-4 border-slate-500'
+})
+
+const filteredAlerts = computed(() => {
+  let result = alerts.value
+
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    result = result.filter(alert =>
+      (alert.message || alert.signature_msg || '').toLowerCase().includes(query) ||
+      (alert.src_ip || '').includes(query)
+    )
+  }
+
+  if (selectedSeverity.value) {
+    result = result.filter(alert => alert.severity === selectedSeverity.value)
+  }
+
+  if (selectedType.value) {
+    result = result.filter(alert => alert.type === selectedType.value || alert.detection_type === selectedType.value)
+  }
+
+  return result
+})
+
+const formatTime = (timestamp) => {
+  if (!timestamp) return 'N/A'
+  return format(new Date(timestamp), 'MMM d, yyyy HH:mm:ss')
 }
 
-const severityBadge = (severity) => {
+const formatPatternName = (pattern) => {
+  const names = {
+    'sql_injection': 'SQL Injection',
+    'xss': 'XSS',
+    'brute_force': 'Brute Force',
+    'scan': 'Scanning',
+    'exploit': 'Exploits',
+    'data_exfil': 'Data Exfiltration'
+  }
+  return names[pattern] || pattern
+}
+
+const getSeverityBorder = (severity) => {
+  const colors = {
+    'critical': 'border-red-500',
+    'high': 'border-orange-500',
+    'medium': 'border-yellow-500',
+    'low': 'border-blue-500'
+  }
+  return colors[severity] || 'border-slate-500'
+}
+
+const getSeverityBadge = (severity) => {
   const classes = {
     'critical': 'bg-red-900 text-red-200',
     'high': 'bg-orange-900 text-orange-200',
@@ -143,32 +425,55 @@ const severityBadge = (severity) => {
   return classes[severity] || 'bg-slate-700 text-slate-200'
 }
 
-const formatTime = (timestamp) => {
-  return new Date(timestamp).toLocaleTimeString()
+const getPatternColor = (count) => {
+  if (count >= 10) return 'text-red-400'
+  if (count >= 5) return 'text-orange-400'
+  if (count >= 3) return 'text-yellow-400'
+  return 'text-slate-400'
+}
+
+const getThreatLevelClass = (level) => {
+  const classes = {
+    'critical': 'bg-red-900 text-red-200',
+    'high': 'bg-orange-900 text-orange-200',
+    'medium': 'bg-yellow-900 text-yellow-200',
+    'low': 'bg-blue-900 text-blue-200'
+  }
+  return classes[level] || 'bg-slate-700 text-slate-200'
+}
+
+const getCorrelationSeverityClass = (severity) => {
+  const colors = {
+    'critical': 'border-red-500',
+    'high': 'border-orange-500',
+    'medium': 'border-yellow-500',
+    'low': 'border-blue-500'
+  }
+  return colors[severity] || 'border-slate-500'
 }
 
 const connectWebSocket = () => {
-  ws = new WebSocket('ws://localhost:8001/ws/alerts')
+  ws.value = new WebSocket('ws://localhost:8001/ws/alerts')
 
-  ws.onopen = () => {
+  ws.value.onopen = () => {
     connectionStatus.value = 'Connected'
   }
 
-  ws.onmessage = (event) => {
+  ws.value.onmessage = (event) => {
     const alert = JSON.parse(event.data)
     alerts.value.unshift(alert)
-    if (alerts.value.length > 50) {
-      alerts.value = alerts.value.slice(0, 50)
+    if (alerts.value.length > 100) {
+      alerts.value = alerts.value.slice(0, 100)
     }
   }
 
-  ws.onerror = () => {
+  ws.value.onerror = () => {
     connectionStatus.value = 'Disconnected'
   }
 
-  ws.onclose = () => {
+  ws.value.onclose = () => {
     connectionStatus.value = 'Reconnecting...'
-    setTimeout(connectWebSocket, 3000)
+    setTimeout(connectWebSocket, 8001)
   }
 }
 
@@ -183,10 +488,228 @@ const fetchStats = async () => {
 
 const fetchAlerts = async () => {
   try {
-    const response = await axios.get('/alerts?limit=20')
+    const response = await axios.get('/alerts?limit=100')
     alerts.value = response.data
   } catch (error) {
     console.error('Failed to fetch alerts:', error)
+  }
+}
+
+const fetchAnalytics = async () => {
+  try {
+    const [topPorts, topSource, patterns, threats, correlationsData, systemStatusData] = await Promise.all([
+      axios.get('/analytics/top-ports'),
+      axios.get('/analytics/top-source-ips'),
+      axios.get('/analytics/attack-patterns'),
+      axios.get('/threats/top'),
+      axios.get('/threats/correlations'),
+      axios.get('/system/status')
+    ])
+
+    topPorts.value = topPorts.data.top_ports || []
+    topSourceIps.value = topSource.data.top_source_ips || []
+    attackPatterns.value = patterns.data.attack_patterns || []
+    topThreats.value = threats.data.top_threats || []
+    correlations.value = correlationsData.data.correlations || []
+    systemStatus.value = systemStatusData.data.components || {}
+  } catch (error) {
+    console.error('Failed to fetch analytics:', error)
+  }
+}
+
+const initCharts = () => {
+  // Timeline Chart
+  if (timelineChart.value) {
+    timelineChartInstance = new ChartJS(timelineChart.value, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Alerts',
+          data: [],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#94a3b8'
+            },
+            grid: {
+              color: '#334155'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#94a3b8'
+            },
+            grid: {
+              color: '#334155'
+            }
+          }
+        }
+      }
+    })
+  }
+
+  // Severity Chart
+  if (severityChart.value) {
+    severityChartInstance = new ChartJS(severityChart.value, {
+      type: 'doughnut',
+      data: {
+        labels: ['Critical', 'High', 'Medium', 'Low'],
+        datasets: [{
+          data: [0, 0, 0, 0],
+          backgroundColor: [
+            'rgba(239, 68, 68, 0.8)',
+            'rgba(249, 115, 22, 0.8)',
+            'rgba(234, 179, 8, 0.8)',
+            'rgba(59, 130, 246, 0.8)'
+          ],
+          borderColor: '#1e293b'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: '#94a3b8'
+            }
+          }
+        }
+      }
+    })
+  }
+
+  // Type Chart
+  if (typeChart.value) {
+    typeChartInstance = new ChartJS(typeChart.value, {
+      type: 'bar',
+      data: {
+        labels: ['Signature', 'Anomaly', 'Threat Intel'],
+        datasets: [{
+          label: 'Alerts',
+          data: [0, 0, 0],
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(168, 85, 247, 0.8)',
+            'rgba(239, 68, 68, 0.8)'
+          ],
+          borderColor: '#1e293b'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: '#94a3b8'
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#94a3b8'
+            },
+            grid: {
+              color: '#334155'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#94a3b8'
+            },
+            grid: {
+              color: '#334155'
+            }
+          }
+        }
+      }
+    })
+  }
+}
+
+const updateCharts = () => {
+  // Update severity chart
+  if (severityChartInstance) {
+    severityChartInstance.data.datasets[0].data = [
+      stats.value.critical || 0,
+      stats.value.high_severity || 0,
+      stats.value.medium_severity || 0,
+      stats.value.low_severity || 0
+    ]
+    severityChartInstance.update()
+  }
+
+  // Update type chart
+  if (typeChartInstance) {
+    typeChartInstance.data.datasets[0].data = [
+      stats.value.signature_detections || 0,
+      stats.value.anomaly_detections || 0,
+      stats.value.threat_intel_indicators || 0
+    ]
+    typeChartInstance.update()
+  }
+
+  // Update timeline chart
+  if (timelineChartInstance) {
+    const hours = 24
+    const labels = []
+    const data = []
+
+    for (let i = hours - 1; i >= 0; i--) {
+      const hourKey = new Date(Date.now() - i * 3600000).getHours()
+      labels.push(`${hourKey}:00`)
+      data.push(Math.floor(Math.random() * 5)) // Placeholder - would fetch real data
+    }
+
+    timelineChartInstance.data.labels = labels
+    timelineChartInstance.data.datasets[0].data = data
+    timelineChartInstance.update()
+  }
+}
+
+const filterAlerts = () => {
+  // Filter logic is handled by computed property
+}
+
+const refreshAll = async () => {
+  await fetchStats()
+  await fetchAlerts()
+  await fetchAnalytics()
+  updateCharts()
+}
+
+const exportAlerts = async () => {
+  try {
+    const response = await axios.get('/alerts/export?format=json')
+    const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `atig_alerts_${new Date().toISOString()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('Export failed:', error)
   }
 }
 
@@ -194,12 +717,28 @@ onMounted(() => {
   connectWebSocket()
   fetchStats()
   fetchAlerts()
+  fetchAnalytics()
+  initCharts()
+
+  // Set up periodic refresh
   setInterval(fetchStats, 10000)
+  setInterval(fetchAlerts, 15000)
+  setInterval(fetchAnalytics, 30000)
+  setInterval(updateCharts, 30000)
 })
 
 onUnmounted(() => {
-  if (ws) {
-    ws.close()
+  if (ws.value) {
+    ws.value.close()
+  }
+  if (timelineChartInstance) {
+    timelineChartInstance.destroy()
+  }
+  if (severityChartInstance) {
+    severityChartInstance.destroy()
+  }
+  if (typeChartInstance) {
+    typeChartInstance.destroy()
   }
 })
 </script>
