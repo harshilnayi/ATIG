@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -31,23 +30,21 @@ func ParsePacket(packet gopacket.Packet) (*PacketMetadata, error) {
 	}
 
 	// Extract IP layer
-	ipLayer := packet.Layer(gopacket.LayerTypeIPv4)
+	ipLayer := packet.Layer(layers.LayerTypeIPv4)
 	if ipLayer == nil {
-		ipLayer = packet.Layer(gopacket.LayerTypeIPv6)
+		ipLayer = packet.Layer(layers.LayerTypeIPv6)
 	}
 
 	if ipLayer != nil {
 		var ip *layers.IPv4
-		var ip6 *layers.IPv6
 
 		switch l := ipLayer.(type) {
 		case *layers.IPv4:
 			ip = l
 			meta.ProtocolInfo.SrcIP = l.SrcIP
 			meta.ProtocolInfo.DstIP = l.DstIP
-			meta.ProtocolInfo.Protocol = l.NetworkProtocol.String()
+			meta.ProtocolInfo.Protocol = fmt.Sprintf("IP Proto %d", byte(l.Protocol))
 		case *layers.IPv6:
-			ip6 = l
 			meta.ProtocolInfo.SrcIP = l.SrcIP
 			meta.ProtocolInfo.DstIP = l.DstIP
 			meta.ProtocolInfo.Protocol = l.NextHeader.String()
@@ -60,7 +57,7 @@ func ParsePacket(packet gopacket.Packet) (*PacketMetadata, error) {
 	}
 
 	// Extract transport layer
-	transportLayer := packet.Layer(gopacket.LayerTypeTCP)
+	transportLayer := packet.Layer(layers.LayerTypeTCP)
 	if transportLayer != nil {
 		tcp := transportLayer.(*layers.TCP)
 		meta.ProtocolInfo.SrcPort = uint16(tcp.SrcPort)
@@ -87,7 +84,7 @@ func ParsePacket(packet gopacket.Packet) (*PacketMetadata, error) {
 		return meta, nil
 	}
 
-	transportLayer = packet.Layer(gopacket.LayerTypeUDP)
+	transportLayer = packet.Layer(layers.LayerTypeUDP)
 	if transportLayer != nil {
 		udp := transportLayer.(*layers.UDP)
 		meta.ProtocolInfo.SrcPort = uint16(udp.SrcPort)
@@ -96,7 +93,7 @@ func ParsePacket(packet gopacket.Packet) (*PacketMetadata, error) {
 		return meta, nil
 	}
 
-	transportLayer = packet.Layer(gopacket.LayerTypeICMPv4)
+	transportLayer = packet.Layer(layers.LayerTypeICMPv4)
 	if transportLayer != nil {
 		icmp := transportLayer.(*layers.ICMPv4)
 		meta.ProtocolInfo.Protocol = "ICMP"
@@ -118,12 +115,12 @@ func DecodeDNS(packet *PacketMetadata) (map[string]interface{}, error) {
 	}
 
 	var dns layers.DNS
-	err := dns.DecodeFromBytes(packet.Payload, gopacket.Default)
+	err := dns.DecodeFromBytes(packet.Payload, nil)
 	if err != nil {
 		return dnsInfo, nil
 	}
 
-	if dns.Qr {
+	if dns.QR {
 		dnsInfo["type"] = "response"
 		if len(dns.Answers) > 0 {
 			dnsInfo["answers"] = dns.Answers[0].String()
@@ -170,12 +167,16 @@ func (d *Decoder) Process(packet gopacket.Packet) *PacketMetadata {
 	// Check for interesting application layers
 	appLayer := packet.ApplicationLayer()
 	if appLayer != nil {
-		switch appLayer.LayerType() {
-		case layers.LayerTypeDNS:
+		layerType := appLayer.LayerType()
+		// DNS handling
+		if layerType == layers.LayerTypeDNS {
 			if dnsInfo, err := DecodeDNS(meta); err == nil {
 				meta.Payload = []byte(fmt.Sprintf("%v", dnsInfo))
 			}
-		case layers.LayerTypeHTTP:
+		}
+		// HTTP detection based on port (simplified)
+		if meta.ProtocolInfo.DstPort == 80 || meta.ProtocolInfo.SrcPort == 80 ||
+			meta.ProtocolInfo.DstPort == 8080 || meta.ProtocolInfo.SrcPort == 8080 {
 			if httpInfo, err := DecodeHTTP(meta); err == nil {
 				meta.Payload = []byte(fmt.Sprintf("%v", httpInfo))
 			}

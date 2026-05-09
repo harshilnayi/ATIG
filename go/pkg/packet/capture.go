@@ -87,7 +87,7 @@ func (c *CaptureEngine) captureLoop() {
 	}
 }
 
-func (c *CaptureEngine) PacketStream() <-chan gopacket.Packet {
+func (c *CaptureEngine) PacketStream() chan gopacket.Packet {
 	return c.packetSrc
 }
 
