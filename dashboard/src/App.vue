@@ -504,22 +504,15 @@ const fetchAlerts = async () => {
 
 const fetchAnalytics = async () => {
   try {
-    const [topPortsRes, topSourceRes, patternsRes, threatsRes, correlationsData, systemStatusData, timeline] = await Promise.all([
+    const [topPortsRes, topSourceRes, patternsRes, threatsRes, correlationsData, systemStatusData, hourlyRes] = await Promise.all([
       axios.get('/analytics/top-ports'),
       axios.get('/analytics/top-source-ips'),
       axios.get('/analytics/attack-patterns'),
       axios.get('/threats/top'),
       axios.get('/threats/correlations'),
       axios.get('/system/status'),
-      axios.get('/alerts/timeline?hours=24')
+      axios.get('/analytics/alerts-by-hour?hours=24')
     ])
-
-    console.log('Raw API responses:', {
-      topPortsRes: topPortsRes.data,
-      topSourceRes: topSourceRes.data,
-      patternsRes: patternsRes.data,
-      threatsRes: threatsRes.data
-    })
 
     topPorts.value = topPortsRes.data.top_ports || []
     topSourceIps.value = topSourceRes.data.top_source_ips || []
@@ -527,15 +520,14 @@ const fetchAnalytics = async () => {
     topThreats.value = threatsRes.data.top_threats || []
     correlations.value = correlationsData.data.correlations || []
     systemStatus.value = systemStatusData.data.components || {}
-    timelineData.value = timeline.data.timeline || []
 
-    console.log('Analytics after assignment:', {
-      topPorts: topPorts.value,
-      topSourceIps: topSourceIps.value,
-      attackPatterns: attackPatterns.value,
-      topThreats: topThreats.value,
-      timelineData: timelineData.value
-    })
+    // Convert hourly counts to timeline array
+    const hourlyCounts = hourlyRes.data.hourly_counts || {}
+    timelineData.value = Object.entries(hourlyCounts).map(([timestamp, total]) => ({
+      timestamp,
+      total,
+      by_severity: { critical: 0, high: 0, medium: 0, low: 0 }
+    }))
   } catch (error) {
     console.error('Failed to fetch analytics:', error)
   }
@@ -728,24 +720,23 @@ const updateCharts = () => {
     const labels = []
     const data = []
 
-    // Always use all 24 hours
+    // Use all timeline data (should be 24 hours)
     if (timelineData.value && timelineData.value.length > 0) {
       timelineData.value.forEach(item => {
         const time = item.timestamp || ''
-        const hour = time.split(' ')[1]?.split(':')[0] || time.slice(-5)
-        labels.push(hour + ':00')
+        // Extract just the hour part like "12:00"
+        const hourPart = time.split(' ')[1] || time.slice(-5)
+        labels.push(hourPart)
         data.push(item.total || 0)
       })
     }
 
-    // Update the existing chart's dataset values
-    if (data.length > 0) {
-      timelineChartInstance.data.labels = labels
-      timelineChartInstance.data.datasets[0].data = data
-      timelineChartInstance.data.datasets[0].pointRadius = 4
-      timelineChartInstance.data.datasets[0].pointHoverRadius = 8
-    }
-    timelineChartInstance.update()
+    // Update the chart
+    timelineChartInstance.data.labels = labels
+    timelineChartInstance.data.datasets[0].data = data
+    timelineChartInstance.data.datasets[0].tension = 0.6
+    timelineChartInstance.data.datasets[0].pointRadius = data.some(v => v > 0) ? 5 : 0
+    timelineChartInstance.update('active')
   }
 }
 
