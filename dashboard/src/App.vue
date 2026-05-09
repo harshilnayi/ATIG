@@ -739,7 +739,12 @@ const updateCharts = () => {
     }
 
     // Update the existing chart's dataset values
-    timelineChartInstance.data.datasets[0].data = data.length > 0 ? data : timelineChartInstance.data.datasets[0].data
+    if (data.length > 0) {
+      timelineChartInstance.data.labels = labels
+      timelineChartInstance.data.datasets[0].data = data
+      timelineChartInstance.data.datasets[0].pointRadius = 4
+      timelineChartInstance.data.datasets[0].pointHoverRadius = 8
+    }
     timelineChartInstance.update()
   }
 }
