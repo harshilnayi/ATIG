@@ -234,7 +234,13 @@
         <div class="bg-slate-800 rounded-lg p-6">
           <h3 class="text-lg font-semibold text-white mb-4">Top Threats</h3>
           <div class="space-y-2">
-            <div
+    <!-- Empty state when no threats -->
+    <div v-if="topThreats.length === 0" class="text-center py-6">
+      <div class="text-4xl mb-2">🛡️</div>
+      <div class="text-slate-400 text-sm">No malicious IPs detected yet</div>
+    </div>
+    <!-- Threat list -->
+    <div v-else
               v-for="(threat, idx) in topThreats.slice(0, 5)"
               :key="idx"
               class="flex justify-between items-center p-3 bg-slate-700 rounded"
@@ -302,7 +308,7 @@
             <div class="text-xs text-slate-400 mt-1">Blocked IPs</div>
           </div>
           <div class="bg-slate-700 rounded p-4 text-center">
-            <div class="text-2xl font-bold text-orange-400">{{ systemStatus.threat_intel_indicators }}</div>
+            <div class="text-2xl font-bold text-orange-400">{{ systemStatus.threat_intel ? systemStatus.threat_intel.split(' ')[0] : 0 }}</div>
             <div class="text-xs text-slate-400 mt-1">Threat Intel</div>
           </div>
         </div>
@@ -314,11 +320,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
-import { Chart as ChartJS } from 'chart.js'
-import { Line, Bar, Doughnut } from 'vue-chartjs'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, LineController, BarController, DoughnutController } from 'chart.js'
 import { format } from 'date-fns'
 
 // Register Chart.js components
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, LineController, BarController, DoughnutController)
 
 const alerts = ref([])
 const stats = ref({})
@@ -338,6 +344,7 @@ const attackPatterns = ref([])
 const correlations = ref([])
 const topThreats = ref([])
 const threatIntelLastUpdated = ref('Never')
+const timelineData = ref([])
 
 // System status
 const systemStatus = ref({
@@ -497,21 +504,38 @@ const fetchAlerts = async () => {
 
 const fetchAnalytics = async () => {
   try {
-    const [topPorts, topSource, patterns, threats, correlationsData, systemStatusData] = await Promise.all([
+    const [topPortsRes, topSourceRes, patternsRes, threatsRes, correlationsData, systemStatusData, timeline] = await Promise.all([
       axios.get('/analytics/top-ports'),
       axios.get('/analytics/top-source-ips'),
       axios.get('/analytics/attack-patterns'),
       axios.get('/threats/top'),
       axios.get('/threats/correlations'),
-      axios.get('/system/status')
+      axios.get('/system/status'),
+      axios.get('/alerts/timeline?hours=24')
     ])
 
-    topPorts.value = topPorts.data.top_ports || []
-    topSourceIps.value = topSource.data.top_source_ips || []
-    attackPatterns.value = patterns.data.attack_patterns || []
-    topThreats.value = threats.data.top_threats || []
+    console.log('Raw API responses:', {
+      topPortsRes: topPortsRes.data,
+      topSourceRes: topSourceRes.data,
+      patternsRes: patternsRes.data,
+      threatsRes: threatsRes.data
+    })
+
+    topPorts.value = topPortsRes.data.top_ports || []
+    topSourceIps.value = topSourceRes.data.top_source_ips || []
+    attackPatterns.value = patternsRes.data.attack_patterns || []
+    topThreats.value = threatsRes.data.top_threats || []
     correlations.value = correlationsData.data.correlations || []
     systemStatus.value = systemStatusData.data.components || {}
+    timelineData.value = timeline.data.timeline || []
+
+    console.log('Analytics after assignment:', {
+      topPorts: topPorts.value,
+      topSourceIps: topSourceIps.value,
+      attackPatterns: attackPatterns.value,
+      topThreats: topThreats.value,
+      timelineData: timelineData.value
+    })
   } catch (error) {
     console.error('Failed to fetch analytics:', error)
   }
@@ -664,25 +688,37 @@ const updateCharts = () => {
     typeChartInstance.data.datasets[0].data = [
       stats.value.signature_detections || 0,
       stats.value.anomaly_detections || 0,
-      stats.value.threat_intel_indicators || 0
+      stats.value.threat_intel_detections || 0
     ]
     typeChartInstance.update()
   }
 
-  // Update timeline chart
-  if (timelineChartInstance) {
-    const hours = 24
+  // Update timeline chart with REAL data from API
+  if (timelineChartInstance && timelineData.value.length > 0) {
     const labels = []
     const data = []
+    const criticalData = []
+    const highData = []
+    const mediumData = []
 
-    for (let i = hours - 1; i >= 0; i--) {
-      const hourKey = new Date(Date.now() - i * 3600000).getHours()
-      labels.push(`${hourKey}:00`)
-      data.push(Math.floor(Math.random() * 5)) // Placeholder - would fetch real data
-    }
+    timelineData.value.forEach(item => {
+      const time = item.timestamp || ''
+      const hour = time.split(' ')[1]?.split(':')[0] || time.slice(-5)
+      labels.push(hour)
+      data.push(item.total || 0)
+      criticalData.push(item.by_severity?.critical || 0)
+      highData.push(item.by_severity?.high || 0)
+      mediumData.push(item.by_severity?.medium || 0)
+    })
 
     timelineChartInstance.data.labels = labels
-    timelineChartInstance.data.datasets[0].data = data
+    timelineChartInstance.data.datasets = [{
+      label: 'Total Alerts',
+      data: data,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      tension: 0.4
+    }]
     timelineChartInstance.update()
   }
 }
@@ -713,18 +749,24 @@ const exportAlerts = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   connectWebSocket()
-  fetchStats()
-  fetchAlerts()
-  fetchAnalytics()
+  await fetchStats()
+  await fetchAlerts()
+  await fetchAnalytics()
   initCharts()
+  updateCharts() // Update charts with real data after fetching
 
   // Set up periodic refresh
-  setInterval(fetchStats, 10000)
-  setInterval(fetchAlerts, 15000)
-  setInterval(fetchAnalytics, 30000)
-  setInterval(updateCharts, 30000)
+  setInterval(() => {
+    fetchStats()
+    fetchAlerts()
+  }, 10000)
+
+  setInterval(() => {
+    fetchAnalytics()
+    updateCharts()
+  }, 30000)
 })
 
 onUnmounted(() => {

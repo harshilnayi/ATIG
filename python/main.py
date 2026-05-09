@@ -226,16 +226,24 @@ def get_alerts(limit: int = 100, db: Session = Depends(get_db)):
 @app.get("/stats")
 def get_stats(db: Session = Depends(get_db)):
     total_alerts = db.query(Alert).count()
+    critical = db.query(Alert).filter(Alert.severity == "critical").count()
     high_severity = db.query(Alert).filter(Alert.severity == "high").count()
+    medium_severity = db.query(Alert).filter(Alert.severity == "medium").count()
+    low_severity = db.query(Alert).filter(Alert.severity == "low").count()
     signature_alerts = db.query(Alert).filter(Alert.detection_type == "SIGNATURE").count()
     anomaly_alerts = db.query(Alert).filter(Alert.detection_type == "ANOMALY").count()
+    threat_intel_alerts = db.query(Alert).filter(Alert.detection_type == "THREAT_INTEL").count()
 
     return {
         "total_alerts": total_alerts,
+        "critical": critical,
         "high_severity": high_severity,
+        "medium_severity": medium_severity,
+        "low_severity": low_severity,
         "signature_detections": signature_alerts,
         "anomaly_detections": anomaly_alerts,
-        "threat_intel_indicators": sum(len(v) for v in threat_intel.indicators.values())
+        "threat_intel_indicators": sum(len(v) for v in threat_intel.indicators.values()),
+        "threat_intel_detections": threat_intel_alerts
     }
 
 
