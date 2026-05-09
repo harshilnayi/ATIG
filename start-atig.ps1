@@ -62,7 +62,7 @@ if (Test-Port 5432) {
 Write-Host "[4/7] Starting Detection API (port 8001)..." -ForegroundColor White
 Set-Location E:\ATIG\python
 $apiProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd E:\ATIG\python; python main.py" -PassThru
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 15
 
 if (Test-Port 8001) {
     Write-Host "  API ON port 8001 OK" -ForegroundColor Green

@@ -693,23 +693,27 @@ const updateCharts = () => {
     typeChartInstance.update()
   }
 
-  // Update timeline chart with REAL data from API
-  if (timelineChartInstance && timelineData.value.length > 0) {
+  // Update timeline chart with data from API (even if empty, show zero values)
+  if (timelineChartInstance) {
     const labels = []
     const data = []
-    const criticalData = []
-    const highData = []
-    const mediumData = []
 
-    timelineData.value.forEach(item => {
-      const time = item.timestamp || ''
-      const hour = time.split(' ')[1]?.split(':')[0] || time.slice(-5)
-      labels.push(hour)
-      data.push(item.total || 0)
-      criticalData.push(item.by_severity?.critical || 0)
-      highData.push(item.by_severity?.high || 0)
-      mediumData.push(item.by_severity?.medium || 0)
-    })
+    if (timelineData.value && timelineData.value.length > 0) {
+      timelineData.value.forEach(item => {
+        const time = item.timestamp || ''
+        const hour = time.split(' ')[1]?.split(':')[0] || time.slice(-5)
+        labels.push(hour)
+        data.push(item.total || 0)
+      })
+    } else {
+      // Provide empty 24-hour labels for proper display
+      const now = new Date()
+      for (let i = 23; i >= 0; i--) {
+        const hour = new Date(now.getTime() - i * 60 * 60 * 1000)
+        labels.push(hour.getHours().toString().padStart(2, '0') + ':00')
+        data.push(0)
+      }
+    }
 
     timelineChartInstance.data.labels = labels
     timelineChartInstance.data.datasets = [{
@@ -717,7 +721,8 @@ const updateCharts = () => {
       data: data,
       borderColor: '#3b82f6',
       backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      tension: 0.4
+      tension: 0.4,
+      fill: true
     }]
     timelineChartInstance.update()
   }
