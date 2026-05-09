@@ -736,20 +736,18 @@ const updateCharts = () => {
     timelineChartInstance.data.datasets = [{
       label: 'Total Alerts',
       data: data,
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.2)',
-      borderWidth: 2,
+      borderColor: '#60a5fa',
+      backgroundColor: 'rgba(96, 165, 250, 0.15)',
+      borderWidth: 3,
       tension: 0.6,
       fill: true,
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      pointBackgroundColor: '#3b82f6',
-      pointBorderColor: '#fff',
+      pointRadius: data.length > 0 ? 4 : 0,
+      pointHoverRadius: 8,
+      pointBackgroundColor: '#60a5fa',
+      pointBorderColor: '#1e293b',
       pointBorderWidth: 2,
-      animation: {
-        duration: 800,
-        easing: 'easeInOutQuart'
-      }
+      borderJoinStyle: 'round',
+      spanGaps: true
     }]
     timelineChartInstance.update()
   }
