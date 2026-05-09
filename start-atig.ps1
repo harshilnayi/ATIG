@@ -4,18 +4,17 @@
 $ErrorActionPreference = "Stop"
 $host.ui.RawUI.WindowTitle = "ATIG - Automated Threat Intelligence Aggregator"
 
-Write-Host "╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  ATIG - Automated Threat Intelligence Aggregator         ║" -ForegroundColor Cyan
-Write-Host "║  Full System Startup                                     ║" -ForegroundColor Cyan
-Write-Host "╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "=================================================" -ForegroundColor Cyan
+Write-Host "  ATIG - Automated Threat Intelligence Aggregator" -ForegroundColor Cyan
+Write-Host "  Full System Startup" -ForegroundColor Cyan
+Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Function to check port
 function Test-Port {
     param($port)
-    $tcp = $null
     try {
-        $tcp = Get-NetTCPConnection -LocalPort $port -ErrorAction Stop
+        $null = Get-NetTCPConnection -LocalPort $port -ErrorAction Stop
         return $true
     } catch {
         return $false
@@ -54,7 +53,7 @@ try {
 # Step 3: Verify database
 Write-Host "[3/7] Verifying database..." -ForegroundColor White
 if (Test-Port 5432) {
-    Write-Host "  Database ON port 5432 ✓" -ForegroundColor Green
+    Write-Host "  Database ON port 5432 OK" -ForegroundColor Green
 } else {
     Write-Host "  Database NOT running (continuing without DB)" -ForegroundColor Yellow
 }
@@ -66,7 +65,7 @@ $apiProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd 
 Start-Sleep -Seconds 5
 
 if (Test-Port 8001) {
-    Write-Host "  API ON port 8001 ✓" -ForegroundColor Green
+    Write-Host "  API ON port 8001 OK" -ForegroundColor Green
 } else {
     Write-Host "  API FAILED to start!" -ForegroundColor Red
     exit 1
@@ -78,7 +77,7 @@ $dashboardProcess = Start-Process powershell -ArgumentList "-NoExit", "-Command"
 Start-Sleep -Seconds 5
 
 if (Test-Port 3000) {
-    Write-Host "  Dashboard ON port 3000 ✓" -ForegroundColor Green
+    Write-Host "  Dashboard ON port 3000 OK" -ForegroundColor Green
 } else {
     Write-Host "  Dashboard FAILED to start!" -ForegroundColor Red
     exit 1
@@ -88,7 +87,7 @@ if (Test-Port 3000) {
 Write-Host "[6/7] Testing API health..." -ForegroundColor White
 try {
     $health = Invoke-RestMethod -Uri "http://localhost:8001/health" -TimeoutSec 5
-    Write-Host "  API Health: $($health.health) ✓" -ForegroundColor Green
+    Write-Host "  API Health: $($health.health) OK" -ForegroundColor Green
 } catch {
     Write-Host "  API health check FAILED!" -ForegroundColor Red
 }
@@ -99,13 +98,13 @@ Start-Process "http://localhost:3000"
 
 # Summary
 Write-Host ""
-Write-Host "╔══════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║  SYSTEM STARTED SUCCESSFULLY                             ║" -ForegroundColor Cyan
-Write-Host "╠══════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
-Write-Host "║  Dashboard: http://localhost:3000                        ║" -ForegroundColor White
-Write-Host "║  API:      http://localhost:8001                         ║" -ForegroundColor White
-Write-Host "║  Database: localhost:5432                                ║" -ForegroundColor White
-Write-Host "╚══════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+Write-Host "=================================================" -ForegroundColor Cyan
+Write-Host "  SYSTEM STARTED SUCCESSFULLY" -ForegroundColor Cyan
+Write-Host "=================================================" -ForegroundColor Cyan
+Write-Host "  Dashboard: http://localhost:3000" -ForegroundColor White
+Write-Host "  API:       http://localhost:8001" -ForegroundColor White
+Write-Host "  Database:  localhost:5432" -ForegroundColor White
+Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Running processes:" -ForegroundColor Yellow
 Write-Host "  - API:      PID $($apiProcess.Id)" -ForegroundColor White
