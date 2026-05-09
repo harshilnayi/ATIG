@@ -552,9 +552,15 @@ const initCharts = () => {
           label: 'Alerts',
           data: [],
           borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          tension: 0.4,
-          fill: true
+          backgroundColor: 'rgba(59, 130, 246, 0.2)',
+          borderWidth: 2,
+          tension: 0.6,
+          fill: true,
+          pointRadius: 3,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#3b82f6',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2
         }]
       },
       options: {
@@ -563,6 +569,13 @@ const initCharts = () => {
         plugins: {
           legend: {
             display: false
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            titleColor: '#94a3b8',
+            bodyColor: '#fff',
+            borderColor: '#3b82f6',
+            borderWidth: 1
           }
         },
         scales: {
@@ -583,6 +596,10 @@ const initCharts = () => {
               color: '#334155'
             }
           }
+        },
+        animation: {
+          duration: 1000,
+          easing: 'easeInOutQuart'
         }
       }
     })
@@ -720,9 +737,19 @@ const updateCharts = () => {
       label: 'Total Alerts',
       data: data,
       borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59, 130, 246, 0.1)',
-      tension: 0.4,
-      fill: true
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      borderWidth: 2,
+      tension: 0.6,
+      fill: true,
+      pointRadius: 3,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#3b82f6',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      animation: {
+        duration: 800,
+        easing: 'easeInOutQuart'
+      }
     }]
     timelineChartInstance.update()
   }
