@@ -542,25 +542,38 @@ const fetchAnalytics = async () => {
 }
 
 const initCharts = () => {
-  // Timeline Chart
+  // Timeline Chart - Initialize with 24 hours of data
   if (timelineChart.value) {
+    const now = new Date()
+    const initialLabels = []
+    const initialData = []
+
+    // Create 24-hour labels from 24 hours ago to now
+    for (let i = 23; i >= 0; i--) {
+      const hour = new Date(now.getTime() - i * 60 * 60 * 1000)
+      initialLabels.push(hour.getHours().toString().padStart(2, '0') + ':00')
+      initialData.push(0)
+    }
+
     timelineChartInstance = new ChartJS(timelineChart.value, {
       type: 'line',
       data: {
-        labels: [],
+        labels: initialLabels,
         datasets: [{
           label: 'Alerts',
-          data: [],
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.2)',
-          borderWidth: 2,
+          data: initialData,
+          borderColor: '#60a5fa',
+          backgroundColor: 'rgba(96, 165, 250, 0.15)',
+          borderWidth: 3,
           tension: 0.6,
           fill: true,
-          pointRadius: 3,
-          pointHoverRadius: 6,
-          pointBackgroundColor: '#3b82f6',
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2
+          pointRadius: 0,
+          pointHoverRadius: 8,
+          pointBackgroundColor: '#60a5fa',
+          pointBorderColor: '#1e293b',
+          pointBorderWidth: 2,
+          borderJoinStyle: 'round',
+          spanGaps: true
         }]
       },
       options: {
@@ -710,45 +723,23 @@ const updateCharts = () => {
     typeChartInstance.update()
   }
 
-  // Update timeline chart with data from API (even if empty, show zero values)
+  // Update timeline chart - update existing chart data
   if (timelineChartInstance) {
     const labels = []
     const data = []
 
+    // Always use all 24 hours
     if (timelineData.value && timelineData.value.length > 0) {
       timelineData.value.forEach(item => {
         const time = item.timestamp || ''
         const hour = time.split(' ')[1]?.split(':')[0] || time.slice(-5)
-        labels.push(hour)
+        labels.push(hour + ':00')
         data.push(item.total || 0)
       })
-    } else {
-      // Provide empty 24-hour labels for proper display
-      const now = new Date()
-      for (let i = 23; i >= 0; i--) {
-        const hour = new Date(now.getTime() - i * 60 * 60 * 1000)
-        labels.push(hour.getHours().toString().padStart(2, '0') + ':00')
-        data.push(0)
-      }
     }
 
-    timelineChartInstance.data.labels = labels
-    timelineChartInstance.data.datasets = [{
-      label: 'Total Alerts',
-      data: data,
-      borderColor: '#60a5fa',
-      backgroundColor: 'rgba(96, 165, 250, 0.15)',
-      borderWidth: 3,
-      tension: 0.6,
-      fill: true,
-      pointRadius: data.length > 0 ? 4 : 0,
-      pointHoverRadius: 8,
-      pointBackgroundColor: '#60a5fa',
-      pointBorderColor: '#1e293b',
-      pointBorderWidth: 2,
-      borderJoinStyle: 'round',
-      spanGaps: true
-    }]
+    // Update the existing chart's dataset values
+    timelineChartInstance.data.datasets[0].data = data.length > 0 ? data : timelineChartInstance.data.datasets[0].data
     timelineChartInstance.update()
   }
 }
